@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Harvard vs Neyman Arxitekturası</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --bg3: #1a1a25;
+    --text: #e8e8f0;
+    --muted: #7a7a9a;
+    --accent-h: #00d4ff;
+    --accent-n: #ff6b35;
+    --accent-green: #00ff9d;
+    --border: rgba(255,255,255,0.08);
+    --card: rgba(255,255,255,0.04);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* NAV */
+  #nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    background: rgba(10,10,15,0.8);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+  #nav .logo {
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+  #nav .logo span { color: var(--accent-h); }
+  .slide-counter {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .slide-counter strong { color: var(--text); }
+
+  /* PROGRESS */
+  #progress-bar {
+    position: fixed;
+    bottom: 0; left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-h), var(--accent-n));
+    transition: width 0.4s cubic-bezier(.4,0,.2,1);
+    z-index: 100;
+  }
+
+  /* NAV DOTS */
+  #dots {
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    border: 1px solid var(--muted);
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .dot.active { background: var(--accent-h); border-color: var(--accent-h); transform: scale(1.4); }
+
+  /* ARROW NAV */
+  .nav-btn {
+    position: fixed;
+    bottom: 30px;
+    z-index: 100;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(10px);
+    transition: all 0.2s;
+  }
+  .nav-btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.05); }
+  #btn-prev { left: calc(50% - 60px); }
+  #btn-next { left: calc(50% + 12px); }
+
+  /* SLIDES */
+  #slides {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s cubic-bezier(.4,0,.2,1);
+    padding: 80px 60px 80px;
+  }
+  .slide.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  /* THREE.JS CANVAS */
+  #three-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .slide-content {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 1100px;
+  }
+
+  /* SLIDE 1 — TITLE */
+  .title-slide {
+    text-align: center;
+    flex-direction: column;
+  }
+  .title-slide .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.3em;
+    color: var(--accent-h);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.3s forwards;
+  }
+  .title-slide h1 {
+    font-size: clamp(40px, 6vw, 82px);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 16px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.5s forwards;
+  }
+  .title-slide h1 .h { color: var(--accent-h); }
+  .title-slide h1 .n { color: var(--accent-n); }
+  .title-slide .subtitle {
+    font-size: 18px;
+    color: var(--muted);
+    font-weight: 400;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.7s forwards;
+    margin-bottom: 48px;
+  }
+  .author-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 12px 24px;
+    border-radius: 50px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.9s forwards;
+  }
+  .author-badge .avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-h), var(--accent-n));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; color: #000;
+  }
+  .author-badge .name { font-size: 15px; }
+  .author-badge .course { font-size: 12px; color: var(--muted); }
+
+  /* SECTION HEADER */
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: var(--accent-h);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .slide h2 {
+    font-size: clamp(28px, 4vw, 52px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 32px;
+    line-height: 1.1;
+  }
+
+  /* TWO COLUMN */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    width: 100%;
+  }
+  .three-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    transition: border-color 0.3s;
+  }
+  .card:hover { border-color: rgba(255,255,255,0.2); }
+  .card.harvard { border-left: 3px solid var(--accent-h); }
+  .card.neyman { border-left: 3px solid var(--accent-n); }
+  .card.positive { border-left: 3px solid var(--accent-green); }
+  .card.negative { border-left: 3px solid #ff4444; }
+
+  .card .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card .card-icon {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .card-icon.h { background: rgba(0,212,255,0.15); }
+  .card-icon.n { background: rgba(255,107,53,0.15); }
+  .card-icon.g { background: rgba(0,255,157,0.15); }
+  .card-icon.r { background: rgba(255,68,68,0.15); }
+
+  .card p {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .card ul {
+    list-style: none;
+    margin-top: 8px;
+  }
+  .card ul li {
+    font-size: 13px;
+    color: var(--muted);
+    padding: 5px 0;
+    padding-left: 16px;
+    position: relative;
+    line-height: 1.5;
+  }
+  .card ul li::before {
+    content: '▸';
+    position: absolute;
+    left: 0;
+    color: var(--accent-h);
+    font-size: 10px;
+  }
+  .card.neyman ul li::before { color: var(--accent-n); }
+  .card.positive ul li::before { color: var(--accent-green); }
+  .card.negative ul li::before { color: #ff4444; }
+
+  /* STAT CHIPS */
+  .stat-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+  .stat-chip {
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent-h);
+  }
+  .stat-chip.orange {
+    background: rgba(255,107,53,0.08);
+    border-color: rgba(255,107,53,0.2);
+    color: var(--accent-n);
+  }
+  .stat-chip.green {
+    background: rgba(0,255,157,0.08);
+    border-color: rgba(0,255,157,0.2);
+    color: var(--accent-green);
+  }
+
+  /* COMPARE TABLE */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin-top: 8px;
+  }
+  .compare-table th {
+    padding: 14px 20px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .compare-table th:nth-child(1) { color: var(--muted); }
+  .compare-table th:nth-child(2) { color: var(--accent-h); }
+  .compare-table th:nth-child(3) { color: var(--accent-n); }
+  .compare-table td {
+    padding: 12px 20px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .compare-table tr:hover td { background: var(--card); }
+  .compare-table td:nth-child(1) { color: var(--text); font-weight: 500; }
+  .compare-table td:nth-child(2) { color: rgba(0,212,255,0.8); }
+  .compare-table td:nth-child(3) { color: rgba(255,107,53,0.8); }
+
+  /* ARCHITECTURE DIAGRAM */
+  .arch-diagram {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .arch-diagram::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-h), transparent);
+  }
+  .arch-diagram.neyman::before {
+    background: linear-gradient(90deg, var(--accent-n), transparent);
+  }
+  .arch-diagram h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 24px;
+    color: var(--accent-h);
+  }
+  .arch-diagram.neyman h3 { color: var(--accent-n); }
+
+  /* SVG DIAGRAMS */
+  .diagram-svg {
+    width: 100%;
+    height: auto;
+  }
+
+  /* CONCLUSION */
+  .conclusion-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 8px;
+  }
+  .conclusion-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .conclusion-item .ci-label {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .conclusion-item .ci-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  /* FINAL SLIDE */
+  .thank-slide {
+    text-align: center;
+    flex-direction: column;
+  }
+  .thank-slide h2 {
+    font-size: clamp(48px, 8vw, 100px);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    background: linear-gradient(135deg, var(--accent-h), var(--accent-n));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+  .thank-slide p {
+    font-size: 18px;
+    color: var(--muted);
+    margin-bottom: 32px;
+  }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .slide.active .card {
+    animation: fadeUp 0.5s backwards;
+  }
+  .slide.active .card:nth-child(1) { animation-delay: 0.1s; }
+  .slide.active .card:nth-child(2) { animation-delay: 0.2s; }
+  .slide.active .card:nth-child(3) { animation-delay: 0.3s; }
+
+  /* KEYBOARD HINT */
+  .key-hint {
+    position: fixed;
+    bottom: 86px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    z-index: 100;
+    opacity: 0.6;
+  }
+
+  /* SLIDE 2 - CONTENTS */
+  .contents-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 8px;
+  }
+  .content-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .content-item:hover {
+    border-color: rgba(255,255,255,0.2);
+    transform: translateY(-2px);
+  }
+  .content-item .ci-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .content-item .ci-name {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  /* TAGS */
+  .app-tag {
+    display: inline-block;
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.15);
+    color: var(--accent-h);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin: 3px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .app-tag.n {
+    background: rgba(255,107,53,0.08);
+    border-color: rgba(255,107,53,0.15);
+    color: var(--accent-n);
+  }
+
+  /* PERF BAR */
+  .perf-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 8px 0;
+  }
+  .perf-label {
+    font-size: 12px;
+    color: var(--muted);
+    width: 80px;
+    flex-shrink: 0;
+  }
+  .perf-bar-bg {
+    flex: 1;
+    height: 6px;
+    background: var(--bg3);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .perf-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s cubic-bezier(.4,0,.2,1);
+  }
+  .perf-bar-fill.h { background: var(--accent-h); }
+  .perf-bar-fill.n { background: var(--accent-n); }
+  .perf-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    width: 36px;
+    text-align: right;
+  }
+
+  .slide-inner {
+    width: 100%;
+    max-width: 1100px;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="three-canvas"></canvas>
+
+<div id="nav">
+  <div class="logo">KOMPÜTER <span>ARXİTEKTURASI</span> · Fərziyeva Aytac</div>
+  <div class="slide-counter"><strong id="cur-slide">1</strong> / <span id="total-slides">10</span></div>
+</div>
+
+<div id="dots"></div>
+<div id="progress-bar"></div>
+
+<div id="slides">
+
+  <!-- SLIDE 1: TITLE -->
+  <div class="slide active title-slide" id="s0">
+    <div class="slide-content" style="text-align:center">
+      <div class="eyebrow">Kompüter Arxitekturası · Müqayisəli Təhlil</div>
+      <h1><span class="h">Harvard</span> &amp;<br><span class="n">Neyman</span><br>Arxitekturası</h1>
+      <p class="subtitle">İki fundamental arxitektura modelinin dərin analizi</p>
+      <div class="author-badge" style="margin:0 auto; display:inline-flex">
+        <div class="avatar">FA</div>
+        <div>
+          <div class="name">Fərziyeva Aytac</div>
+          <div class="course">Kompüter Arxitekturası Dersi</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: CONTENTS -->
+  <div class="slide" id="s1">
+    <div class="slide-inner">
+      <div class="section-label">Plan</div>
+      <h2>Mündəricat</h2>
+      <div class="contents-grid">
+        <div class="content-item" onclick="goTo(2)">
+          <div class="ci-num">01</div>
+          <div class="ci-name">Harvard Arxitekturası</div>
+        </div>
+        <div class="content-item" onclick="goTo(3)">
+          <div class="ci-num">02</div>
+          <div class="ci-name">Neyman Arxitekturası</div>
+        </div>
+        <div class="content-item" onclick="goTo(4)">
+          <div class="ci-num">03</div>
+          <div class="ci-name">Üstünlüklər &amp; Çatışmazlıqlar</div>
+        </div>
+        <div class="content-item" onclick="goTo(5)">
+          <div class="ci-num">04</div>
+          <div class="ci-name">Struktur Müqayisəsi</div>
+        </div>
+        <div class="content-item" onclick="goTo(6)">
+          <div class="ci-num">05</div>
+          <div class="ci-name">Performans Analizi</div>
+        </div>
+        <div class="content-item" onclick="goTo(7)">
+          <div class="ci-num">06</div>
+          <div class="ci-name">Tətbiq Sahələri</div>
+        </div>
+        <div class="content-item" onclick="goTo(8)">
+          <div class="ci-num">07</div>
+          <div class="ci-name">Əsas Fərqlər</div>
+        </div>
+        <div class="content-item" onclick="goTo(9)">
+          <div class="ci-num">08</div>
+          <div class="ci-name">Nəticə</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: HARVARD -->
+  <div class="slide" id="s2">
+    <div class="slide-inner">
+      <div class="section-label">01 — Harvard Arxitekturası</div>
+      <h2>Harvard <span style="color:var(--accent-h)">Arxitekturası</span></h2>
+      <div class="two-col">
+        <div>
+          <div class="card harvard">
+            <div class="card-title">
+              <div class="card-icon h">🔵</div>
+              Tarix &amp; Mənşə
+            </div>
+            <p>1944-cü ildə <strong>Harvard Mark I</strong> kompüterində Howard Aiken tərəfindən yaradılmışdır. II Dünya Müharibəsi zamanı hərbi hesablamalar üçün istifadə olunub.</p>
+          </div>
+          <div class="card harvard" style="margin-top:16px">
+            <div class="card-title">
+              <div class="card-icon h">💡</div>
+              Əsas Prinsip
+            </div>
+            <ul>
+              <li>Təlimat yaddaşı məlumat yaddaşından ayrıdır</li>
+              <li>İki müstəqil şin (bus) sistemi</li>
+              <li>Paralel məlumat axını imkanı</li>
+              <li>Eyni anda həm kod, həm data oxuma</li>
+            </ul>
+          </div>
+          <div class="stat-row">
+            <div class="stat-chip">2× daha sürətli DSP</div>
+            <div class="stat-chip">Ayrı keş</div>
+            <div class="stat-chip">Real-time</div>
+          </div>
+        </div>
+        <div class="arch-diagram">
+          <h3>Harvard Arxitekturası Strukturu</h3>
+          <svg viewBox="0 0 340 280" class="diagram-svg">
+            <!-- Instruction Memory -->
+            <rect x="10" y="10" width="100" height="50" rx="8" fill="rgba(0,212,255,0.12)" stroke="rgba(0,212,255,0.4)" stroke-width="1.5"/>
+            <text x="60" y="31" text-anchor="middle" fill="#00d4ff" font-size="10" font-weight="600" font-family="Space Grotesk">Təlimat</text>
+            <text x="60" y="46" text-anchor="middle" fill="#00d4ff" font-size="10" font-family="Space Grotesk">Yaddaşı</text>
+
+            <!-- Data Memory -->
+            <rect x="230" y="10" width="100" height="50" rx="8" fill="rgba(0,212,255,0.12)" stroke="rgba(0,212,255,0.4)" stroke-width="1.5"/>
+            <text x="280" y="31" text-anchor="middle" fill="#00d4ff" font-size="10" font-weight="600" font-family="Space Grotesk">Məlumat</text>
+            <text x="280" y="46" text-anchor="middle" fill="#00d4ff" font-size="10" font-family="Space Grotesk">Yaddaşı</text>
+
+            <!-- CPU -->
+            <rect x="100" y="110" width="140" height="80" rx="12" fill="rgba(0,212,255,0.08)" stroke="rgba(0,212,255,0.6)" stroke-width="2"/>
+            <text x="170" y="143" text-anchor="middle" fill="#00d4ff" font-size="13" font-weight="700" font-family="Space Grotesk">CPU</text>
+            <rect x="115" y="155" width="46" height="24" rx="4" fill="rgba(0,212,255,0.15)" stroke="rgba(0,212,255,0.3)" stroke-width="1"/>
+            <text x="138" y="171" text-anchor="middle" fill="#7af3ff" font-size="9" font-family="Space Grotesk">ALU</text>
+            <rect x="179" y="155" width="46" height="24" rx="4" fill="rgba(0,212,255,0.15)" stroke="rgba(0,212,255,0.3)" stroke-width="1"/>
+            <text x="202" y="171" text-anchor="middle" fill="#7af3ff" font-size="9" font-family="Space Grotesk">CU</text>
+
+            <!-- I/O -->
+            <rect x="115" y="230" width="110" height="36" rx="6" fill="rgba(120,120,180,0.1)" stroke="rgba(120,120,180,0.3)" stroke-width="1"/>
+            <text x="170" y="252" text-anchor="middle" fill="#9999cc" font-size="10" font-family="Space Grotesk">Giriş / Çıxış</text>
+
+            <!-- Instruction bus (left) -->
+            <line x1="60" y1="60" x2="60" y2="88" stroke="rgba(0,212,255,0.6)" stroke-width="2" stroke-dasharray="4 2"/>
+            <line x1="60" y1="88" x2="120" y2="88" stroke="rgba(0,212,255,0.6)" stroke-width="2" stroke-dasharray="4 2"/>
+            <line x1="120" y1="88" x2="120" y2="110" stroke="rgba(0,212,255,0.6)" stroke-width="2" stroke-dasharray="4 2"/>
+            <text x="60" y="82" text-anchor="start" fill="#00d4ff" font-size="8" font-family="Space Grotesk">Təlimat şini</text>
+
+            <!-- Data bus (right) -->
+            <line x1="280" y1="60" x2="280" y2="88" stroke="rgba(0,212,255,0.4)" stroke-width="2" stroke-dasharray="4 2"/>
+            <line x1="280" y1="88" x2="218" y2="88" stroke="rgba(0,212,255,0.4)" stroke-width="2" stroke-dasharray="4 2"/>
+            <line x1="218" y1="88" x2="218" y2="110" stroke="rgba(0,212,255,0.4)" stroke-width="2" stroke-dasharray="4 2"/>
+            <text x="280" y="82" text-anchor="end" fill="#00d4ff" font-size="8" font-family="Space Grotesk">Məlumat şini</text>
+
+            <!-- CPU to I/O -->
+            <line x1="170" y1="190" x2="170" y2="230" stroke="rgba(120,120,180,0.5)" stroke-width="1.5"/>
+
+            <!-- Parallel label -->
+            <text x="170" y="100" text-anchor="middle" fill="#00ff9d" font-size="9" font-weight="600" font-family="Space Grotesk">← Paralel axın →</text>
+
+            <!-- Arrows -->
+            <polygon points="120,108 114,100 126,100" fill="rgba(0,212,255,0.6)"/>
+            <polygon points="218,108 212,100 224,100" fill="rgba(0,212,255,0.4)"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: NEYMAN -->
+  <div class="slide" id="s3">
+    <div class="slide-inner">
+      <div class="section-label">02 — Neyman Arxitekturası</div>
+      <h2>Neyman <span style="color:var(--accent-n)">Arxitekturası</span></h2>
+      <div class="two-col">
+        <div>
+          <div class="card neyman">
+            <div class="card-title">
+              <div class="card-icon n">🟠</div>
+              Tarix &amp; Mənşə
+            </div>
+            <p>1945-ci ildə <strong>John von Neumann</strong> tərəfindən təqdim edilmişdir. "Yaddaşda saxlanılan proqram" (stored-program) konsepsiyasını dünyaya gətirdi. Müasir kompüterlərin əsasını qoydu.</p>
+          </div>
+          <div class="card neyman" style="margin-top:16px">
+            <div class="card-title">
+              <div class="card-icon n">💡</div>
+              Əsas Prinsip
+            </div>
+            <ul>
+              <li>Proqram kodu və məlumat eyni yaddaşda</li>
+              <li>Vahid magistral (bus) sistemi</li>
+              <li>Ardıcıl icra modeli</li>
+              <li>CPU + ALU + CU + vahid RAM</li>
+            </ul>
+          </div>
+          <div class="stat-row">
+            <div class="stat-chip orange">Sadə dizayn</div>
+            <div class="stat-chip orange">Universal</div>
+            <div class="stat-chip orange">PC / Server</div>
+          </div>
+        </div>
+        <div class="arch-diagram neyman">
+          <h3>Neyman Arxitekturası Strukturu</h3>
+          <svg viewBox="0 0 340 280" class="diagram-svg">
+            <!-- Unified Memory -->
+            <rect x="90" y="10" width="160" height="60" rx="8" fill="rgba(255,107,53,0.12)" stroke="rgba(255,107,53,0.5)" stroke-width="1.5"/>
+            <text x="170" y="33" text-anchor="middle" fill="#ff6b35" font-size="10" font-weight="600" font-family="Space Grotesk">Vahid Yaddaş</text>
+            <text x="170" y="48" text-anchor="middle" fill="#ff9a70" font-size="9" font-family="Space Grotesk">Proqram + Məlumat</text>
+
+            <!-- Harvard image inside Neyman — Harvard diagram reference -->
+            <rect x="95" y="56" width="40" height="10" rx="2" fill="rgba(255,107,53,0.2)" stroke="rgba(255,107,53,0.3)" stroke-width="0.5"/>
+            <text x="115" y="64" text-anchor="middle" fill="#ff9a70" font-size="7" font-family="Space Grotesk">kod</text>
+            <rect x="145" y="56" width="40" height="10" rx="2" fill="rgba(255,107,53,0.15)" stroke="rgba(255,107,53,0.25)" stroke-width="0.5"/>
+            <text x="165" y="64" text-anchor="middle" fill="#ff9a70" font-size="7" font-family="Space Grotesk">data</text>
+            <rect x="193" y="56" width="48" height="10" rx="2" fill="rgba(255,107,53,0.1)" stroke="rgba(255,107,53,0.2)" stroke-width="0.5"/>
+            <text x="217" y="64" text-anchor="middle" fill="#ff9a70" font-size="7" font-family="Space Grotesk">yığın</text>
+
+            <!-- Single Bus -->
+            <rect x="10" y="95" width="320" height="18" rx="4" fill="rgba(255,107,53,0.15)" stroke="rgba(255,107,53,0.4)" stroke-width="1"/>
+            <text x="170" y="108" text-anchor="middle" fill="#ff6b35" font-size="9" font-weight="600" font-family="Space Grotesk">Vahid Magistral — Von Neumann darboğazı</text>
+
+            <!-- CPU Block -->
+            <rect x="80" y="135" width="180" height="100" rx="12" fill="rgba(255,107,53,0.08)" stroke="rgba(255,107,53,0.5)" stroke-width="2"/>
+            <text x="170" y="158" text-anchor="middle" fill="#ff6b35" font-size="12" font-weight="700" font-family="Space Grotesk">CPU</text>
+
+            <!-- ALU -->
+            <rect x="92" y="165" width="70" height="28" rx="5" fill="rgba(255,107,53,0.15)" stroke="rgba(255,107,53,0.3)" stroke-width="1"/>
+            <text x="127" y="183" text-anchor="middle" fill="#ff9a70" font-size="9" font-family="Space Grotesk">ALU</text>
+            <!-- CU -->
+            <rect x="175" y="165" width="70" height="28" rx="5" fill="rgba(255,107,53,0.15)" stroke="rgba(255,107,53,0.3)" stroke-width="1"/>
+            <text x="210" y="183" text-anchor="middle" fill="#ff9a70" font-size="9" font-family="Space Grotesk">CU</text>
+            <!-- Registers -->
+            <rect x="92" y="200" width="153" height="24" rx="4" fill="rgba(255,107,53,0.1)" stroke="rgba(255,107,53,0.2)" stroke-width="1"/>
+            <text x="168" y="216" text-anchor="middle" fill="#ff9a70" font-size="9" font-family="Space Grotesk">Registrlər</text>
+
+            <!-- IO -->
+            <rect x="10" y="255" width="100" height="18" rx="5" fill="rgba(120,120,180,0.1)" stroke="rgba(120,120,180,0.3)" stroke-width="1"/>
+            <text x="60" y="268" text-anchor="middle" fill="#9999cc" font-size="9" font-family="Space Grotesk">Giriş</text>
+            <rect x="230" y="255" width="100" height="18" rx="5" fill="rgba(120,120,180,0.1)" stroke="rgba(120,120,180,0.3)" stroke-width="1"/>
+            <text x="280" y="268" text-anchor="middle" fill="#9999cc" font-size="9" font-family="Space Grotesk">Çıxış</text>
+
+            <!-- Connections -->
+            <line x1="170" y1="70" x2="170" y2="95" stroke="rgba(255,107,53,0.6)" stroke-width="2"/>
+            <line x1="170" y1="113" x2="170" y2="135" stroke="rgba(255,107,53,0.6)" stroke-width="2"/>
+            <line x1="60" y1="235" x2="60" y2="255" stroke="rgba(120,120,180,0.4)" stroke-width="1.5"/>
+            <line x1="280" y1="235" x2="280" y2="255" stroke="rgba(120,120,180,0.4)" stroke-width="1.5"/>
+            <line x1="60" y1="235" x2="80" y2="235" stroke="rgba(120,120,180,0.3)" stroke-width="1.5"/>
+            <line x1="260" y1="235" x2="280" y2="235" stroke="rgba(120,120,180,0.3)" stroke-width="1.5"/>
+            <line x1="80" y1="225" x2="80" y2="235" stroke="rgba(120,120,180,0.3)" stroke-width="1.5"/>
+            <line x1="260" y1="225" x2="260" y2="235" stroke="rgba(120,120,180,0.3)" stroke-width="1.5"/>
+
+            <!-- Bottleneck warning marker -->
+            <circle cx="170" cy="104" r="6" fill="rgba(255,68,68,0.3)" stroke="#ff4444" stroke-width="1"/>
+            <text x="170" y="108" text-anchor="middle" fill="#ff4444" font-size="8" font-weight="700">!</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: PROS & CONS -->
+  <div class="slide" id="s4">
+    <div class="slide-inner">
+      <div class="section-label">03 — Üstünlüklər &amp; Çatışmazlıqlar</div>
+      <h2>Müsbət &amp; <span style="color:var(--accent-green)">Mənfi</span> Cəhətlər</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px">
+        <!-- Harvard -->
+        <div>
+          <div style="font-size:13px; color:var(--accent-h); font-weight:600; margin-bottom:12px; font-family:'JetBrains Mono',monospace; letter-spacing:0.1em">HARVARD</div>
+          <div class="card positive" style="margin-bottom:12px">
+            <div class="card-title"><div class="card-icon g">✓</div> Üstünlüklər</div>
+            <ul>
+              <li>Paralel əməliyyatlar — eyni anda kod + data</li>
+              <li>Yüksək icra sürəti, pipeline dəstəyi</li>
+              <li>Yaddaş darboğazı aradan qaldırılır</li>
+              <li>Yüksək təhlükəsizlik — kod/data ayrılığı</li>
+              <li>Real-vaxt sistemlər üçün ideal</li>
+            </ul>
+          </div>
+          <div class="card negative">
+            <div class="card-title"><div class="card-icon r">✗</div> Çatışmazlıqlar</div>
+            <ul>
+              <li>Mürəkkəb hardware dizaynı</li>
+              <li>İki ayrı bus — daha baha istehsal</li>
+              <li>Yaddaş istifadəsi qeyri-çevik</li>
+              <li>Proqramlaşdırmaq daha çətin</li>
+            </ul>
+          </div>
+        </div>
+        <!-- Neyman -->
+        <div>
+          <div style="font-size:13px; color:var(--accent-n); font-weight:600; margin-bottom:12px; font-family:'JetBrains Mono',monospace; letter-spacing:0.1em">NEYMAN (VON NEUMANN)</div>
+          <div class="card positive" style="margin-bottom:12px">
+            <div class="card-title"><div class="card-icon g">✓</div> Üstünlüklər</div>
+            <ul>
+              <li>Sadə və ucuz hardware</li>
+              <li>Universal proqramlaşdırma imkanı</li>
+              <li>Çevik yaddaş idarəetməsi</li>
+              <li>Dinamik proqramlaşdırma mümkün</li>
+              <li>Geniş ekosistem və dəstək</li>
+            </ul>
+          </div>
+          <div class="card negative">
+            <div class="card-title"><div class="card-icon r">✗</div> Çatışmazlıqlar</div>
+            <ul>
+              <li><strong style="color:#ff6b6b">Von Neumann darboğazı</strong> — əsas problem</li>
+              <li>"Memory wall" — yaddaş sürəti limiti</li>
+              <li>Eyni anda yalnız bir əməliyyat</li>
+              <li>Real-time sistemlər üçün zəif</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: COMPARISON TABLE -->
+  <div class="slide" id="s5">
+    <div class="slide-inner">
+      <div class="section-label">04 — Müqayisəli Təhlil</div>
+      <h2>Struktur <span style="color:var(--accent-h)">Müqayisəsi</span></h2>
+      <div class="arch-diagram" style="padding:0; overflow:hidden">
+        <table class="compare-table">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border)">
+              <th>Xüsusiyyət</th>
+              <th>🔵 Harvard</th>
+              <th>🟠 Neyman</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Yaddaş strukturu</td><td>Ayrı (kod + data)</td><td>Vahid (ortaq)</td></tr>
+            <tr><td>Magistral (Bus)</td><td>İki ayrı bus</td><td>Tək vahid bus</td></tr>
+            <tr><td>Məlumat axını</td><td>Paralel icra</td><td>Ardıcıl icra</td></tr>
+            <tr><td>Performans</td><td>Yüksək (DSP)</td><td>Orta (GP)</td></tr>
+            <tr><td>Hardware mürəkkəbliyi</td><td>Yüksək</td><td>Aşağı</td></tr>
+            <tr><td>İstehsal qiyməti</td><td>Baha</td><td>Ucuz</td></tr>
+            <tr><td>Proqram çevikliyi</td><td>Məhdud</td><td>Tam çevik</td></tr>
+            <tr><td>Darboğaz</td><td>Yox</td><td>Von Neumann bottleneck</td></tr>
+            <tr><td>Təhlükəsizlik</td><td>Yüksək</td><td>Orta</td></tr>
+            <tr><td>Enerji sərfiyyatı</td><td>Yüksək</td><td>Aşağı</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: PERFORMANCE -->
+  <div class="slide" id="s6">
+    <div class="slide-inner">
+      <div class="section-label">05 — Performans Analizi</div>
+      <h2>Performans <span style="color:var(--accent-green)">Statistikası</span></h2>
+      <div class="two-col">
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">İcra Sürəti Müqayisəsi</div>
+            <div class="perf-row">
+              <div class="perf-label" style="color:var(--accent-h)">Harvard</div>
+              <div class="perf-bar-bg"><div class="perf-bar-fill h" style="width:90%"></div></div>
+              <div class="perf-val">90%</div>
+            </div>
+            <div class="perf-row">
+              <div class="perf-label" style="color:var(--accent-n)">Neyman</div>
+              <div class="perf-bar-bg"><div class="perf-bar-fill n" style="width:60%"></div></div>
+              <div class="perf-val">60%</div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">DSP Performansı</div>
+            <div class="perf-row">
+              <div class="perf-label" style="color:var(--accent-h)">Harvard</div>
+              <div class="perf-bar-bg"><div class="perf-bar-fill h" style="width:95%"></div></div>
+              <div class="perf-val">95%</div>
+            </div>
+            <div class="perf-row">
+              <div class="perf-label" style="color:var(--accent-n)">Neyman</div>
+              <div class="perf-bar-bg"><div class="perf-bar-fill n" style="width:40%"></div></div>
+              <div class="perf-val">40%</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Enerji Effektivliyi</div>
+            <div class="perf-row">
+              <div class="perf-label" style="color:var(--accent-h)">Harvard</div>
+              <div class="perf-bar-bg"><div class="perf-bar-fill h" style="width:50%"></div></div>
+              <div class="perf-val">50%</div>
+            </div>
+            <div class="perf-row">
+              <div class="perf-label" style="color:var(--accent-n)">Neyman</div>
+              <div class="perf-bar-bg"><div class="perf-bar-fill n" style="width:80%"></div></div>
+              <div class="perf-val">80%</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="height:100%; display:flex; flex-direction:column; gap:16px">
+            <div class="card-title">Əsas Rəqəmlər</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+              <div style="background:rgba(0,212,255,0.06); border:1px solid rgba(0,212,255,0.15); border-radius:10px; padding:16px; text-align:center">
+                <div style="font-size:28px; font-weight:700; color:var(--accent-h); font-family:'JetBrains Mono',monospace">2-3×</div>
+                <div style="font-size:11px; color:var(--muted); margin-top:4px">Harvard DSP üstünlüyü</div>
+              </div>
+              <div style="background:rgba(0,255,157,0.06); border:1px solid rgba(0,255,157,0.15); border-radius:10px; padding:16px; text-align:center">
+                <div style="font-size:28px; font-weight:700; color:var(--accent-green); font-family:'JetBrains Mono',monospace">40%</div>
+                <div style="font-size:11px; color:var(--muted); margin-top:4px">Bus sürəti artımı</div>
+              </div>
+              <div style="background:rgba(255,107,53,0.06); border:1px solid rgba(255,107,53,0.15); border-radius:10px; padding:16px; text-align:center">
+                <div style="font-size:28px; font-weight:700; color:var(--accent-n); font-family:'JetBrains Mono',monospace">30%</div>
+                <div style="font-size:11px; color:var(--muted); margin-top:4px">Neyman enerji qənaəti</div>
+              </div>
+              <div style="background:rgba(255,68,68,0.06); border:1px solid rgba(255,68,68,0.15); border-radius:10px; padding:16px; text-align:center">
+                <div style="font-size:28px; font-weight:700; color:#ff6b6b; font-family:'JetBrains Mono',monospace">1×</div>
+                <div style="font-size:11px; color:var(--muted); margin-top:4px">Neyman bottleneck</div>
+              </div>
+            </div>
+            <p style="font-size:13px; color:var(--muted); line-height:1.7; margin-top:auto">
+              Harvard arxitekturası xüsusilə siqnal emalı (DSP) sahəsində Neyman arxitekturasına nisbətən <strong style="color:var(--accent-h)">2-3 dəfə</strong> yüksək məhsuldarlıq göstərir. Real vaxt sistemlərində isə <strong style="color:var(--accent-h)">30-50%</strong> üstünlük qazanır.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: APPLICATIONS -->
+  <div class="slide" id="s7">
+    <div class="slide-inner">
+      <div class="section-label">06 — Tətbiq Sahələri</div>
+      <h2>Harada <span style="color:var(--accent-h)">İstifadə</span> Olunur?</h2>
+      <div class="two-col">
+        <div class="card harvard">
+          <div class="card-title"><div class="card-icon h">🔵</div> Harvard Arxitekturası</div>
+          <ul>
+            <li>Mikrokontrollerlər — Arduino, PIC, AVR</li>
+            <li>Rəqəmsal Siqnal Prosessorları (DSP)</li>
+            <li>Gömülü sistemlər &amp; IoT cihazları</li>
+            <li>Real vaxt əməliyyat sistemləri (RTOS)</li>
+            <li>Səs və video emal sistemləri</li>
+            <li>Tibbi avadanlıqlar &amp; sensorlar</li>
+            <li>ARM Cortex-M seriyası</li>
+          </ul>
+          <div style="margin-top:16px; display:flex; flex-wrap:wrap; gap:4px">
+            <span class="app-tag">Arduino</span>
+            <span class="app-tag">ARM Cortex</span>
+            <span class="app-tag">PIC</span>
+            <span class="app-tag">DSP Chips</span>
+            <span class="app-tag">IoT</span>
+            <span class="app-tag">RTOS</span>
+          </div>
+        </div>
+        <div class="card neyman">
+          <div class="card-title"><div class="card-icon n">🟠</div> Neyman Arxitekturası</div>
+          <ul>
+            <li>Ümumi təyinatlı kompüterlər (PC, laptop)</li>
+            <li>Serverlər &amp; məlumat mərkəzləri</li>
+            <li>Smartfonlar &amp; planşetlər</li>
+            <li>Oyun konsolları</li>
+            <li>Superkompüterlər</li>
+            <li>Bulud hesablama sistemləri</li>
+            <li>x86, x64 prosessor ailəsi</li>
+          </ul>
+          <div style="margin-top:16px; display:flex; flex-wrap:wrap; gap:4px">
+            <span class="app-tag n">Intel x86</span>
+            <span class="app-tag n">AMD Ryzen</span>
+            <span class="app-tag n">Server CPU</span>
+            <span class="app-tag n">Cloud</span>
+            <span class="app-tag n">PC</span>
+            <span class="app-tag n">Konsol</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:20px; padding:16px 20px; background:var(--card); border:1px solid var(--border); border-radius:12px">
+        <div style="font-size:13px; color:var(--muted); line-height:1.7">
+          <strong style="color:var(--text)">Seçim meyarı:</strong>
+          Yüksək sürət + sabit proqram + real-vaxt → <span style="color:var(--accent-h)">Harvard</span> &nbsp;|&nbsp;
+          Çevik proqramlaşdırma + böyük yaddaş + universal istifadə → <span style="color:var(--accent-n)">Neyman</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: KEY DIFFERENCES -->
+  <div class="slide" id="s8">
+    <div class="slide-inner">
+      <div class="section-label">07 — Əsas Fərqlər</div>
+      <h2>3 Əsas <span style="color:var(--accent-h)">Fərq</span></h2>
+      <div class="three-col">
+        <div class="card">
+          <div style="font-size:32px; margin-bottom:12px">🧠</div>
+          <div class="card-title">Yaddaş Ayrılığı</div>
+          <p style="margin-bottom:12px">Harvard: kod və data <strong style="color:var(--accent-h)">fiziki olaraq ayrıdır</strong>. Neyman: hər ikisi eyni yaddaş məkanını paylaşır.</p>
+          <p>Bu fərq sistemin təhlükəsizliyinə &amp; etibarlılığına birbaşa təsir edir.</p>
+        </div>
+        <div class="card">
+          <div style="font-size:32px; margin-bottom:12px">🚌</div>
+          <div class="card-title">Bus Strukturu</div>
+          <p style="margin-bottom:12px">Harvard: <strong style="color:var(--accent-h)">2 ayrı bus</strong> — biri məlumat, biri təlimatlar üçün.</p>
+          <p>Neyman: <strong style="color:var(--accent-n)">tək bus</strong> — bu <em>"Von Neumann darboğazı"</em> problemini yaradır.</p>
+        </div>
+        <div class="card">
+          <div style="font-size:32px; margin-bottom:12px">⚡</div>
+          <div class="card-title">Paralel İşləmə</div>
+          <p style="margin-bottom:12px">Harvard: eyni vaxtda həm təlimat, həm məlumat əldə edə bilir — <strong style="color:var(--accent-h)">paralel icra</strong>.</p>
+          <p>Neyman: əməliyyatlar <strong style="color:var(--accent-n)">ardıcıl icra</strong> olunur, paralel mümkün deyil.</p>
+        </div>
+      </div>
+      <div style="margin-top:20px; display:grid; grid-template-columns:1fr 1fr; gap:16px">
+        <div style="padding:16px; background:rgba(0,212,255,0.05); border:1px solid rgba(0,212,255,0.15); border-radius:12px">
+          <div style="font-size:12px; color:var(--accent-h); font-family:'JetBrains Mono',monospace; letter-spacing:0.1em; margin-bottom:8px">HARVARD — NƏ ZAMAN?</div>
+          <p style="font-size:13px; color:var(--muted); line-height:1.6">Performans kritik olduqda, real-vaxt məhdudiyyəti olan sistemlər, sabit &amp; təhlükəsiz tətbiqlər üçün.</p>
+        </div>
+        <div style="padding:16px; background:rgba(255,107,53,0.05); border:1px solid rgba(255,107,53,0.15); border-radius:12px">
+          <div style="font-size:12px; color:var(--accent-n); font-family:'JetBrains Mono',monospace; letter-spacing:0.1em; margin-bottom:8px">NEYMAN — NƏ ZAMAN?</div>
+          <p style="font-size:13px; color:var(--muted); line-height:1.6">Çeviklik &amp; sadəlik vacib olduqda, böyük yaddaş həcmi tələb edən, universal proqramlaşdırma üçün.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: CONCLUSION -->
+  <div class="slide thank-slide" id="s9">
+    <div class="slide-content" style="text-align:center">
+      <div class="section-label" style="text-align:center">Nəticə</div>
+      <h2>Nəticə</h2>
+      <p style="max-width:600px; margin:0 auto 32px; font-size:16px; line-height:1.8; color:var(--muted)">
+        Hər iki arxitektura öz sahəsində güclüdür. Müasir prosessorlar bu iki yanaşmanın üstünlüklərini birləşdirən hibrid həllər tətbiq edir.
+      </p>
+      <div class="conclusion-grid" style="max-width:700px; margin:0 auto 32px">
+        <div class="conclusion-item" style="border-left:2px solid var(--accent-h)">
+          <div class="ci-label">Harvard</div>
+          <div class="ci-text" style="color:var(--accent-h); font-weight:600">Embedded · DSP · IoT · Real-time</div>
+        </div>
+        <div class="conclusion-item" style="border-left:2px solid var(--accent-n)">
+          <div class="ci-label">Neyman</div>
+          <div class="ci-text" style="color:var(--accent-n); font-weight:600">PC · Server · Cloud · Universal</div>
+        </div>
+        <div class="conclusion-item" style="border-left:2px solid var(--accent-green); grid-column:1/-1">
+          <div class="ci-label">Müasir Hibrid Həll</div>
+          <div class="ci-text">L1 keş səviyyəsində Harvard, əsas yaddaşda Neyman prinsipi tətbiq olunur — hər ikisinin üstünlüyü birləşdirilir.</div>
+        </div>
+      </div>
+      <div style="font-size:52px; font-weight:700; letter-spacing:-0.03em; background:linear-gradient(90deg,var(--accent-h),var(--accent-n)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:8px">Təşəkkürlər!</div>
+      <p style="font-size:15px; color:var(--muted)">Fərziyeva Aytac · Kompüter Arxitekturası Dersi</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Navigation -->
+<button class="nav-btn" id="btn-prev" onclick="prevSlide()">‹</button>
+<button class="nav-btn" id="btn-next" onclick="nextSlide()">›</button>
+<div class="key-hint">← → arrow keys to navigate</div>
+
+<script>
+const TOTAL = 10;
+let current = 0;
+
+// Dots
+const dotsEl = document.getElementById('dots');
+for(let i = 0; i < TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===0?' active':'');
+  d.onclick = () => goTo(i);
+  dotsEl.appendChild(d);
+}
+
+function goTo(n){
+  document.getElementById('s'+current).classList.remove('active');
+  dotsEl.children[current].classList.remove('active');
+  current = Math.max(0, Math.min(TOTAL-1, n));
+  document.getElementById('s'+current).classList.add('active');
+  dotsEl.children[current].classList.add('active');
+  document.getElementById('cur-slide').textContent = current + 1;
+  document.getElementById('total-slides').textContent = TOTAL;
+  document.getElementById('progress-bar').style.width = ((current+1)/TOTAL*100)+'%';
+  document.getElementById('btn-prev').style.opacity = current===0?'0.3':'1';
+  document.getElementById('btn-next').style.opacity = current===TOTAL-1?'0.3':'1';
+}
+
+function nextSlide(){ goTo(current+1); }
+function prevSlide(){ goTo(current-1); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key==='ArrowDown') nextSlide();
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp') prevSlide();
+});
+
+goTo(0);
+
+// THREE.JS BACKGROUND
+const canvas = document.getElementById('three-canvas');
+const renderer = new THREE.WebGLRenderer({canvas, alpha:true, antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.z = 5;
+
+// Floating particles
+const geo = new THREE.BufferGeometry();
+const N = 200;
+const pos = new Float32Array(N*3);
+const colors = new Float32Array(N*3);
+for(let i = 0; i < N; i++){
+  pos[i*3] = (Math.random()-0.5)*20;
+  pos[i*3+1] = (Math.random()-0.5)*20;
+  pos[i*3+2] = (Math.random()-0.5)*10;
+  const isH = Math.random() > 0.5;
+  colors[i*3] = isH ? 0 : 1;
+  colors[i*3+1] = isH ? 0.83 : 0.42;
+  colors[i*3+2] = isH ? 1 : 0.21;
+}
+geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+const mat = new THREE.PointsMaterial({size:0.06, vertexColors:true, transparent:true, opacity:0.5});
+const points = new THREE.Points(geo, mat);
+scene.add(points);
+
+// Floating grid lines (subtle)
+const gridGeo = new THREE.BufferGeometry();
+const gridVerts = [];
+for(let i = -5; i <= 5; i++){
+  gridVerts.push(-10, i*2, -3, 10, i*2, -3);
+  gridVerts.push(i*2, -10, -3, i*2, 10, -3);
+}
+gridGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(gridVerts), 3));
+const gridMat = new THREE.LineBasicMaterial({color:0x1a1a30, transparent:true, opacity:0.3});
+const grid = new THREE.LineSegments(gridGeo, gridMat);
+scene.add(grid);
+
+// Two floating node clusters (Harvard = cyan, Neyman = orange)
+function makeNodeCluster(color, cx, cy){
+  const group = new THREE.Group();
+  const nodeGeo = new THREE.SphereGeometry(0.08, 8, 8);
+  const nodeMat = new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.7});
+  const nodes = [];
+  for(let i=0; i<8; i++){
+    const m = new THREE.Mesh(nodeGeo, nodeMat.clone());
+    m.position.set(cx+(Math.random()-0.5)*3, cy+(Math.random()-0.5)*3, (Math.random()-0.5)*2);
+    nodes.push(m);
+    group.add(m);
+  }
+  // Connections
+  const lineMat = new THREE.LineBasicMaterial({color, transparent:true, opacity:0.15});
+  for(let i=0; i<nodes.length; i++){
+    for(let j=i+1; j<nodes.length; j++){
+      if(Math.random()>0.5) continue;
+      const lg = new THREE.BufferGeometry().setFromPoints([nodes[i].position, nodes[j].position]);
+      group.add(new THREE.Line(lg, lineMat));
+    }
+  }
+  return {group, nodes};
+}
+const harvardCluster = makeNodeCluster(0x00d4ff, -3, 1);
+const neymanCluster = makeNodeCluster(0xff6b35, 3, -1);
+scene.add(harvardCluster.group);
+scene.add(neymanCluster.group);
+
+let t = 0;
+function animate(){
+  requestAnimationFrame(animate);
+  t += 0.005;
+  points.rotation.y = t * 0.1;
+  points.rotation.x = t * 0.05;
+  harvardCluster.group.position.y = Math.sin(t*0.7) * 0.3;
+  neymanCluster.group.position.y = Math.cos(t*0.5) * 0.3;
+  harvardCluster.nodes.forEach((n,i)=>{n.position.y += Math.sin(t+i)*0.002;});
+  neymanCluster.nodes.forEach((n,i)=>{n.position.y += Math.cos(t+i)*0.002;});
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', ()=>{
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+</script>
+</body>
+</html>
